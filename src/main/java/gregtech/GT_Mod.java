@@ -61,11 +61,15 @@ import gregtech.loaders.preload.GT_Loader_OreProcessing;
 import ic2.api.recipe.IRecipeInput;
 import ic2.api.recipe.RecipeOutput;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +92,10 @@ import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.oredict.OreDictionary;
+
+import org.apache.commons.lang3.time.DurationFormatUtils;
+import org.apache.commons.lang3.time.FastDateFormat;
+
 import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.LoadController;
 import cpw.mods.fml.common.Loader;
@@ -127,9 +135,42 @@ public class GT_Mod
             throw new GT_ItsNotMyFaultException("One of your Mods included GregTech-API Files inside it's download, mention this to the Mod Author, who does this bad thing, and tell him/her to use reflection. I have added a Version check, to prevent Authors from breaking my Mod that way.");
         }
     }
+    
+    private static void profileLog(Object o){    	
+    	try {
+			String content;
+			File file = new File("GregtechTimingsTC.txt");
+			// if file doesnt exists, then create it
+			if (!file.exists()) {
+				file.createNewFile();
+				FileWriter fw = new FileWriter(file.getAbsoluteFile(), true);
+				BufferedWriter bw = new BufferedWriter(fw);
+				bw.write("============================================================");
+				bw.write(System.lineSeparator());
+				bw.close();
+			}			
+			if (o instanceof String){
+				content = (String) o;
+    		}
+    		else {
+    	    content = o.toString();
+    		}		
+			FileWriter fw = new FileWriter(file.getAbsoluteFile(), true);
+			BufferedWriter bw = new BufferedWriter(fw);
+			bw.write(content);
+			bw.write(System.lineSeparator());
+			bw.close();
+			System.out.println("Data Logged.");
+
+		} catch (IOException e) {
+			System.out.println("Data logging failed.");
+		}
+    }
 
     public GT_Mod() {
-    	System.out.println(systemTimeA=System.currentTimeMillis());
+    	Date date = new Date(systemTimeA=System.currentTimeMillis());
+    	profileLog("Current Time - Constructor Call "+date.toString());
+    	System.out.println("A.) Taking a copy of the system time - "+(FastDateFormat.getInstance().format(date)));
         try {
             Class.forName("ic2.core.IC2").getField("enableOreDictCircuit").set(null, Boolean.valueOf(true));
         } catch (Throwable e) {
@@ -153,7 +194,9 @@ public class GT_Mod
 
     @Mod.EventHandler
     public void onPreLoad(FMLPreInitializationEvent aEvent) {
-    	System.out.println(systemTimeB=System.currentTimeMillis());
+    	Date date2 = new Date(systemTimeB=System.currentTimeMillis());
+    	profileLog("Current Time - preInit Call "+date2.toString());
+    	System.out.println("B.) Taking a copy of the system time - "+(FastDateFormat.getInstance().format(date2)));
         if (GregTech_API.sPreloadStarted) {
             return;
         }
@@ -506,6 +549,8 @@ public class GT_Mod
 
         GT_Log.out.println("GT_Mod: Activating OreDictionary Handler, this can take some time, as it scans the whole OreDictionary");
         FMLLog.info("If your Log stops here, you were too impatient. Wait a bit more next time, before killing Minecraft with the Task Manager.", new Object[0]);
+        Date date = new Date();
+        profileLog("Current Time - Before activeOreDicthandler(): "+date.toString());
         gregtechproxy.activateOreDictHandler();
         FMLLog.info("Congratulations, you have been waiting long enough. Have a Cake.", new Object[0]);
         GT_Log.out.println("GT_Mod: " + GT_ModHandler.sSingleNonBlockDamagableRecipeList.size() + " Recipes were left unused.");
@@ -745,9 +790,27 @@ public class GT_Mod
         GregTech_API.sAfterGTLoad = null;
         GregTech_API.sBeforeGTPostload = null;
         GregTech_API.sAfterGTPostload = null;
-        System.out.println("Current Time: "+System.currentTimeMillis());
-        System.out.println("Time Diff A: "+(System.currentTimeMillis()-systemTimeA));
-        System.out.println("Time Diff B: "+(System.currentTimeMillis()-systemTimeB));
+        
+        String axxxxx = null;
+        String axxxxxx = null;
+        String axxxxxxx = null;
+        Date date2 = new Date();
+        long timeOclock = System.currentTimeMillis();
+        
+        try {
+        	axxxxx = DurationFormatUtils.formatDurationHMS(timeOclock-systemTimeA);
+        	axxxxxx = DurationFormatUtils.formatDurationHMS(timeOclock-systemTimeB);
+        	axxxxxxx = DurationFormatUtils.formatDurationHMS(timeOclock-date.getTime());
+        }
+        catch (Throwable e){
+        	
+        }
+        profileLog("Current Time: "+date2.toString());
+    	profileLog("Difference between final GT code call and Constructor: "+axxxxx);
+    	profileLog("Difference between final GT code call and PreInit: "+axxxxxx);
+    	profileLog("Difference between final GT code call and activeOreDicthandler(): "+axxxxxxx);
+    	profileLog("============================================================");
+       
     }
 
     @Mod.EventHandler
