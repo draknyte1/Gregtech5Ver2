@@ -805,7 +805,7 @@ public class GT_Mod
         catch (Throwable e){
         	
         }
-        profileLog("Current Time: "+date2.toString());
+        profileLog("Time at last code call : "+date2.toString());
     	profileLog("Difference between final GT code call and Constructor: "+axxxxx);
     	profileLog("Difference between final GT code call and PreInit: "+axxxxxx);
     	profileLog("Difference between final GT code call and activeOreDicthandler(): "+axxxxxxx);
