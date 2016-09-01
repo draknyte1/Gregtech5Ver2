@@ -1,19 +1,32 @@
 package gregtech;
 
-import cpw.mods.fml.common.*;
-import cpw.mods.fml.common.event.*;
-import cpw.mods.fml.common.registry.EntityRegistry;
 import forestry.api.recipes.ICentrifugeRecipe;
 import forestry.api.recipes.ISqueezerRecipe;
 import forestry.api.recipes.RecipeManagers;
 import gregtech.api.GregTech_API;
 import gregtech.api.enchants.Enchantment_EnderDamage;
 import gregtech.api.enchants.Enchantment_Radioactivity;
-import gregtech.api.enums.*;
+import gregtech.api.enums.ConfigCategories;
+import gregtech.api.enums.Dyes;
+import gregtech.api.enums.Element;
+import gregtech.api.enums.GT_Values;
+import gregtech.api.enums.ItemList;
+import gregtech.api.enums.Materials;
+import gregtech.api.enums.OrePrefixes;
+import gregtech.api.enums.Textures;
 import gregtech.api.interfaces.internal.IGT_Mod;
 import gregtech.api.objects.ItemData;
 import gregtech.api.objects.MaterialStack;
-import gregtech.api.util.*;
+import gregtech.api.util.GT_Config;
+import gregtech.api.util.GT_ItsNotMyFaultException;
+import gregtech.api.util.GT_LanguageManager;
+import gregtech.api.util.GT_Log;
+import gregtech.api.util.GT_ModHandler;
+import gregtech.api.util.GT_OreDictUnificator;
+import gregtech.api.util.GT_Recipe;
+import gregtech.api.util.GT_RecipeRegistrator;
+import gregtech.api.util.GT_SpawnEventHandler;
+import gregtech.api.util.GT_Utility;
 import gregtech.common.GT_DummyWorld;
 import gregtech.common.GT_Network;
 import gregtech.common.GT_Proxy;
@@ -29,10 +42,36 @@ import gregtech.loaders.misc.GT_Achievements;
 import gregtech.loaders.misc.GT_Bees;
 import gregtech.loaders.misc.GT_CoverLoader;
 import gregtech.loaders.misc.OreProcessingConfiguration;
-import gregtech.loaders.postload.*;
-import gregtech.loaders.preload.*;
+import gregtech.loaders.postload.GT_BlockResistanceLoader;
+import gregtech.loaders.postload.GT_BookAndLootLoader;
+import gregtech.loaders.postload.GT_CraftingRecipeLoader;
+import gregtech.loaders.postload.GT_CropLoader;
+import gregtech.loaders.postload.GT_ItemMaxStacksizeLoader;
+import gregtech.loaders.postload.GT_MachineRecipeLoader;
+import gregtech.loaders.postload.GT_MinableRegistrator;
+import gregtech.loaders.postload.GT_RecyclerBlacklistLoader;
+import gregtech.loaders.postload.GT_ScrapboxDropLoader;
+import gregtech.loaders.postload.GT_Worldgenloader;
+import gregtech.loaders.preload.GT_Loader_CircuitBehaviors;
+import gregtech.loaders.preload.GT_Loader_ItemData;
+import gregtech.loaders.preload.GT_Loader_Item_Block_And_Fluid;
+import gregtech.loaders.preload.GT_Loader_MetaTileEntities;
+import gregtech.loaders.preload.GT_Loader_OreDictionary;
+import gregtech.loaders.preload.GT_Loader_OreProcessing;
 import ic2.api.recipe.IRecipeInput;
 import ic2.api.recipe.RecipeOutput;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -49,12 +88,20 @@ import net.minecraftforge.fluids.FluidContainerRegistry;
 import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.oredict.OreDictionary;
-
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
-import java.util.*;
-import java.util.Map.Entry;
+import cpw.mods.fml.common.FMLLog;
+import cpw.mods.fml.common.LoadController;
+import cpw.mods.fml.common.Loader;
+import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.ModContainer;
+import cpw.mods.fml.common.SidedProxy;
+import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLModIdMappingEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
+import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStartedEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import cpw.mods.fml.common.event.FMLServerStoppingEvent;
+import cpw.mods.fml.common.registry.EntityRegistry;
 
 //import forestry.factory.recipes.ISqueezerRecipe;
 //import forestry.factory.tiles.TileCentrifuge;
@@ -72,6 +119,8 @@ public class GT_Mod
     public static GT_Proxy gregtechproxy;
     public static int MAX_IC2 = 2147483647;
     public static GT_Achievements achievements;
+    private static long systemTimeA;
+    private static long systemTimeB;
 
     static {
         if ((509 != GregTech_API.VERSION) || (509 != GT_ModHandler.VERSION) || (509 != GT_OreDictUnificator.VERSION) || (509 != GT_Recipe.VERSION) || (509 != GT_Utility.VERSION) || (509 != GT_RecipeRegistrator.VERSION) || (509 != Element.VERSION) || (509 != Materials.VERSION) || (509 != OrePrefixes.VERSION)) {
@@ -80,6 +129,7 @@ public class GT_Mod
     }
 
     public GT_Mod() {
+    	System.out.println(systemTimeA=System.currentTimeMillis());
         try {
             Class.forName("ic2.core.IC2").getField("enableOreDictCircuit").set(null, Boolean.valueOf(true));
         } catch (Throwable e) {
@@ -103,6 +153,7 @@ public class GT_Mod
 
     @Mod.EventHandler
     public void onPreLoad(FMLPreInitializationEvent aEvent) {
+    	System.out.println(systemTimeB=System.currentTimeMillis());
         if (GregTech_API.sPreloadStarted) {
             return;
         }
@@ -694,6 +745,9 @@ public class GT_Mod
         GregTech_API.sAfterGTLoad = null;
         GregTech_API.sBeforeGTPostload = null;
         GregTech_API.sAfterGTPostload = null;
+        System.out.println("Current Time: "+System.currentTimeMillis());
+        System.out.println("Time Diff A: "+(System.currentTimeMillis()-systemTimeA));
+        System.out.println("Time Diff B: "+(System.currentTimeMillis()-systemTimeB));
     }
 
     @Mod.EventHandler
